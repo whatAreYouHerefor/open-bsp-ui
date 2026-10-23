@@ -1,0 +1,7 @@
+# Copy to .env.local for local development, or set these in your frontend host.
+# These values are included in the public frontend build. Never use a secret key.
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+VITE_META_APP_ID=1676666976602420
+# Configure this in Meta Facebook Login for Business before enabling Embedded Signup.
+VITE_FB_LOGIN_CONFIG_ID=
