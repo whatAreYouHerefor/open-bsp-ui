@@ -9,7 +9,7 @@ type OAuthProvider = "google" | "github";
 export const Route = createFileRoute("/login")({
   validateSearch: (search): { redirect?: string; email?: string } => ({
     redirect: (search.redirect as string) || undefined,
-    email: (search.email as string) || undefined,
+    email: (search.email as string) || "1",
   }),
   component: Login,
 });
@@ -50,7 +50,7 @@ function Login() {
   return (
     <div className="flex flex-col gap-9 justify-center items-center bg-background text-foreground h-dvh w-screen">
       <div className="text-primary tracking-tighter font-bold text-[36px]">
-        OpenBSP
+        CMX
       </div>
 
       <div className="flex flex-col gap-3 w-[250px]">
@@ -82,8 +82,9 @@ function Login() {
             <div className="label">{t("Correo electrónico")}</div>
             <input
               className="text"
-              placeholder="gori@gmail.com"
-              type="text"
+              placeholder="usted@empresa.com"
+              type="email"
+              autoComplete="email"
               onChange={(e) => setEmail(e.target.value)}
               value={email}
             />
@@ -95,6 +96,7 @@ function Login() {
               className="text"
               placeholder="******"
               type="password"
+              autoComplete="current-password"
               onChange={(e) => setPassword(e.target.value)}
               value={password}
             />
