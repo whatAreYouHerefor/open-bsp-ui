@@ -5,7 +5,7 @@
 - Frontend: whatAreYouHerefor/open-bsp-ui
 - Backend: whatAreYouHerefor/open-bsp-api
 - Meta app ID: 1676666976602420 (identifier only; access has not been verified)
-- Supabase project: not created yet
+- Supabase project: ovweneaaxdypfopwzwuw (backend migrations and functions deployed)
 - First WhatsApp account: existing live CMX number; inspect Botpress routing before changing it
 
 ## Deploy the backend first
@@ -26,7 +26,7 @@ Set the variables in `cmx/environment.example` in the frontend host. The Supabas
 Build command:
 
 ```sh
-node cmx/check-environment.mjs && npm run build
+node cmx/build.mjs
 ```
 
 For local development, copy `cmx/environment.example` to `.env.local`, fill in the public settings, then run:
@@ -72,3 +72,13 @@ First launch can use assisted onboarding. Later, validate the existing Embedded 
 6. Client onboarding checklist, training, export, support, and cancellation process agreed.
 
 Do not describe the installation as production-ready until these are exercised against the deployed system.
+
+## CMX frontend host settings
+
+- Connect the UI fork, branch `main`.
+- Build command: `node cmx/build.mjs`
+- Output directory: `dist`
+- Root directory: repository root
+- `cmx/public-config.json` contains public project settings only; host environment variables override them.
+- `public/_redirects` provides SPA route fallback on Cloudflare Pages.
+- Email/password login is visible by default. Create the initial operator in Supabase Authentication > Users. Configure OAuth providers separately before using Google/GitHub sign-in.
