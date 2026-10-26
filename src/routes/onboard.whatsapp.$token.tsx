@@ -85,6 +85,9 @@ function Onboard() {
       });
     };
 
+    // Make each attempt depend on the event emitted by this Meta flow.
+    window.__waSessionInfo = undefined;
+
     FB.login(
       function (response: FBLoginResponse) {
         if (response.authResponse) {
@@ -97,6 +100,20 @@ function Onboard() {
           setLoading(true);
 
           const sessionInfo: WASessionInfo = window.__waSessionInfo ?? {};
+
+          if (!sessionInfo.waba_id) {
+            setState({
+              status: "error",
+              message: t(
+                "Meta authorized the business assets, but did not return a WhatsApp Business Account (WABA). No WhatsApp number was connected. Check that this Meta configuration launches WhatsApp Embedded Signup.",
+              ),
+            });
+            setLoading(false);
+            window.__waSignupReport?.("AUTH_ONLY_NO_WA_SESSION", {
+              has_phone_number_id: false,
+            });
+            return;
+          }
 
           const payload: SignupPayload = {
             code,
@@ -144,8 +161,6 @@ function Onboard() {
         override_default_response_type: true,
         extras: {
           setup: {},
-          featureType: "whatsapp_business_app_onboarding",
-          sessionInfoVersion: "3",
         },
       },
     );

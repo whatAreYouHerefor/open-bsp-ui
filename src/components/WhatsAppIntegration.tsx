@@ -27,6 +27,7 @@ export default function WhatsAppIntegration({
   // commonly blocked by tracking protection / ad blockers. If it fails to load,
   // show the error up front instead of a button that cannot work.
   const [sdkFailed, setSdkFailed] = useState(() => !!window.__fbSdkFailed);
+  const [signupError, setSignupError] = useState<string>();
 
   useEffect(() => {
     const onFail = () => setSdkFailed(true);
@@ -45,6 +46,11 @@ export default function WhatsAppIntegration({
       {sdkFailed && (
         <p className="text-destructive font-medium">{sdkErrorMessage}</p>
       )}
+      {signupError && (
+        <p role="alert" className="text-destructive font-medium">
+          {signupError}
+        </p>
+      )}
       <Button
         disabled={!orgId || !allowed || sdkFailed}
         disabledReason={
@@ -56,13 +62,15 @@ export default function WhatsAppIntegration({
         }
         loading={loading}
         className="primary bg-[#4267b2] hover:bg-[#4267b2]/90 text-white w-full"
-        onClick={() =>
+        onClick={() => {
+          setSignupError(undefined);
           context.launchWhatsAppSignup(
             onSuccess || (() => {}),
             setLoading,
             signupOptions,
-          )
-        }
+            (message) => setSignupError(t(message)),
+          );
+        }}
       >
         {t("Continuar con Facebook")}
       </Button>
