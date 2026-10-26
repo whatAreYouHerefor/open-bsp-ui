@@ -71,6 +71,7 @@ type WhatsAppIntegrationContextType = {
     onSuccess: (phone_number_id: string) => void,
     setLoading: (loading: boolean) => void,
     options?: SignupOptions,
+    onError?: (message: string) => void,
   ) => void;
 };
 
@@ -197,9 +198,13 @@ export function WhatsAppIntegrationProvider({
       onSuccess: (phone_number_id: string) => void,
       setLoading: (loading: boolean) => void,
       options?: SignupOptions,
+      onError?: (message: string) => void,
     ) => {
       window.__waSignupReport = (event, data) =>
         reportSignupEvent({ event, data });
+
+      // Do not let a previous attempt's account IDs leak into a new attempt.
+      window.__waSessionInfo = undefined;
 
       // Launch Facebook login
       window.FB?.login(
@@ -218,6 +223,20 @@ export function WhatsAppIntegrationProvider({
             // Retrieve session info captured from message events
             const sessionInfo: WASessionInfo = window.__waSessionInfo ?? {};
 
+            // Facebook authorization can succeed even when the selected login
+            // configuration did not run WhatsApp Embedded Signup. In that
+            // case there is no WABA to save, and the API request can only fail.
+            if (!sessionInfo.waba_id) {
+              const message =
+                "Meta authorized the business assets, but did not return a WhatsApp Business Account (WABA). No WhatsApp number was connected. Check that this Meta configuration launches WhatsApp Embedded Signup.";
+              window.__waSignupReport?.("AUTH_ONLY_NO_WA_SESSION", {
+                has_phone_number_id: false,
+              });
+              setLoading(false);
+              onError?.(message);
+              return;
+            }
+
             // Construct payload according to SignupPayload type
             const payload: SignupPayload = {
               code,
@@ -231,14 +250,23 @@ export function WhatsAppIntegrationProvider({
               verify_token: options?.verify_token || undefined,
             };
 
-            console.log("Sending signup payload:", payload); // Remove after testing
+            console.info("Submitting WhatsApp signup", {
+              has_waba_id: !!payload.waba_id,
+              has_phone_number_id: !!payload.phone_number_id,
+              flow_type: payload.flow_type,
+            });
 
             signup(payload)
-              .then(() => {
-                onSuccess(sessionInfo.phone_number_id || "");
+              .then((address) => {
+                // A WABA-only finish may not include the phone ID in Meta's
+                // event; the backend resolves it and returns the saved row.
+                onSuccess(address.address);
               })
               .catch((error: Error) => {
                 console.error("Signup failed:", error);
+                onError?.(
+                  "Meta completed the authorization, but the BSP could not save the WhatsApp account. Check the signup event and backend result before trying again.",
+                );
               })
               .finally(() => {
                 setLoading(false);
