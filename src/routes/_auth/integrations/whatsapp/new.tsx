@@ -37,29 +37,34 @@ function WhatsAppNew() {
           <div className="instructions">
             <p>
               {t(
-                "Para conectar WhatsApp a la plataforma, iniciá sesión en tu cuenta de Meta y seguí el proceso de registro.",
+                "Para conectar WhatsApp, iniciá sesión en Meta. El flujo debe permitirte seleccionar una cuenta de WhatsApp existente o crear una, y después seleccionar un número elegible o agregar y verificar uno nuevo.",
               )}
             </p>
 
             <p>
-              <strong>{t("Requisitos importantes")}</strong>
+              <strong>{t("Antes de continuar")}</strong>
             </p>
             <ul>
               <li>
                 {t(
-                  "Si usás la app WhatsApp Business, podés conectar tu número actual y seguir usando la app.",
+                  "Para probar el registro de un número nuevo, usá una línea dedicada que puedas verificar por SMS o llamada. No uses todavía un número activo de tu empresa.",
                 )}
               </li>
               <li>
                 {t(
-                  "Si no usás la app, el número a conectar no debe estar activo en otra cuenta de WhatsApp.",
+                  "Si querés conectar un número que ya usa WhatsApp Cloud API, elegí su cuenta de WhatsApp existente si Meta la ofrece. No lo desconectes ni lo migres solo para probar.",
+                )}
+              </li>
+              <li>
+                {t(
+                  "La selección de una página o cuenta publicitaria de Facebook es opcional y no registra por sí sola un número de WhatsApp.",
                 )}
               </li>
             </ul>
           </div>
 
           <label>
-            <div className="label">{t("Número")}</div>
+            <div className="label">{t("Ámbito de conexión")}</div>
             <ScopeToggle value={scope} onChange={setScope} isAdmin={isAdmin} />
           </label>
 
