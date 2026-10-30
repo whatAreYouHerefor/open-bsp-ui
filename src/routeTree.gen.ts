@@ -16,6 +16,7 @@ import { Route as OauthInstagramRouteImport } from './routes/oauth/instagram'
 import { Route as OauthConsentRouteImport } from './routes/oauth/consent'
 import { Route as OauthCallbackRouteImport } from './routes/oauth/callback'
 import { Route as AuthStatsRouteImport } from './routes/_auth/stats'
+import { Route as AuthAssistantRouteImport } from './routes/_auth/assistant'
 import { Route as AuthStatsIndexRouteImport } from './routes/_auth/stats/index'
 import { Route as AuthSettingsIndexRouteImport } from './routes/_auth/settings/index'
 import { Route as AuthIntegrationsIndexRouteImport } from './routes/_auth/integrations/index'
@@ -95,6 +96,11 @@ const OauthCallbackRoute = OauthCallbackRouteImport.update({
 const AuthStatsRoute = AuthStatsRouteImport.update({
   id: '/stats',
   path: '/stats',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthAssistantRoute = AuthAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthStatsIndexRoute = AuthStatsIndexRouteImport.update({
@@ -358,6 +364,7 @@ const AuthIntegrationsWhatsappOrgAddressIdTemplatesTemplateIdRoute =
 
 export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
+  '/assistant': typeof AuthAssistantRoute
   '/stats': typeof AuthStatsRouteWithChildren
   '/oauth/callback': typeof OauthCallbackRoute
   '/oauth/consent': typeof OauthConsentRoute
@@ -412,6 +419,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/assistant': typeof AuthAssistantRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/instagram': typeof OauthInstagramRoute
@@ -467,6 +475,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
+  '/_auth/assistant': typeof AuthAssistantRoute
   '/_auth/stats': typeof AuthStatsRouteWithChildren
   '/oauth/callback': typeof OauthCallbackRoute
   '/oauth/consent': typeof OauthConsentRoute
@@ -523,6 +532,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/login'
+    | '/assistant'
     | '/stats'
     | '/oauth/callback'
     | '/oauth/consent'
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/assistant'
     | '/oauth/callback'
     | '/oauth/consent'
     | '/oauth/instagram'
@@ -631,6 +642,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_auth'
     | '/login'
+    | '/_auth/assistant'
     | '/_auth/stats'
     | '/oauth/callback'
     | '/oauth/consent'
@@ -744,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/stats'
       fullPath: '/stats'
       preLoaderRoute: typeof AuthStatsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/assistant': {
+      id: '/_auth/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AuthAssistantRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/stats/': {
@@ -1088,6 +1107,7 @@ const AuthStatsRouteWithChildren = AuthStatsRoute._addFileChildren(
 )
 
 interface AuthRouteChildren {
+  AuthAssistantRoute: typeof AuthAssistantRoute
   AuthStatsRoute: typeof AuthStatsRouteWithChildren
   AuthIndexRoute: typeof AuthIndexRoute
   AuthAgentsAgentIdRoute: typeof AuthAgentsAgentIdRoute
@@ -1133,6 +1153,7 @@ interface AuthRouteChildren {
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthAssistantRoute: AuthAssistantRoute,
   AuthStatsRoute: AuthStatsRouteWithChildren,
   AuthIndexRoute: AuthIndexRoute,
   AuthAgentsAgentIdRoute: AuthAgentsAgentIdRoute,

@@ -10,9 +10,8 @@ import FilePicker from "@/components/FileUploader/FilePicker";
 import FilePreviewer from "@/components/FilePreviewer";
 import ActionCard from "@/components/ActionCard";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Bot, Building2, MessageSquarePlus, Settings } from "lucide-react";
+import { Bot, Building2, Settings } from "lucide-react";
 import { useResizable } from "@/hooks/useResizable";
-import { useCurrentAgents } from "@/queries/useAgents";
 import StatsCenter from "@/components/stats/StatsCenter";
 
 export const Route = createFileRoute("/_auth")({
@@ -34,12 +33,11 @@ function getMaxPanelWidth() {
 function AppLayout() {
   const { translate: t } = useTranslation();
   const activeOrgId = useBoundStore((state) => state.ui.activeOrgId);
-  const { data: agents } = useCurrentAgents();
-  const hasAiAgents = agents?.some((a) => a.user_id === null);
   const activeConvId = useBoundStore((state) => state.ui.activeConvId);
   const setActiveConv = useBoundStore((state) => state.ui.setActiveConv);
   const location = useLocation();
   const pathname = location.pathname;
+  const isAssistantRoute = pathname.startsWith("/assistant");
   const isStatsRoute = pathname.startsWith("/stats");
 
   const [isHoveringFiles, setIsHoveringFiles] = useState(false);
@@ -64,15 +62,17 @@ function AppLayout() {
   console.log("active org ", activeOrgId);
   console.log("active conv", activeConvId);
 
-  const showCenterPanel = activeConvId || isStatsRoute;
+  const showCenterPanel = !isAssistantRoute && (activeConvId || isStatsRoute);
 
   return (
     <div
       className="app-grid"
       style={
-        panelWidth !== null
-          ? { gridTemplateColumns: `${getMenuWidth()}px ${panelWidth}px 1fr` }
-          : undefined
+        isAssistantRoute
+          ? { gridTemplateColumns: `${getMenuWidth()}px minmax(0, 1fr)` }
+          : panelWidth !== null
+            ? { gridTemplateColumns: `${getMenuWidth()}px ${panelWidth}px 1fr` }
+            : undefined
       }
     >
       {/* Menu - Fixed width */}
@@ -83,75 +83,73 @@ function AppLayout() {
       <div
         ref={panelRef}
         className={
-          "flex-col overflow-hidden md:border-r border-border bg-background text-foreground col-span-2 md:col-span-1 relative " +
+          "flex-col overflow-hidden md:border-r border-border bg-background text-foreground relative " +
+          (isAssistantRoute ? "col-span-1 " : "col-span-2 md:col-span-1 ") +
           (showCenterPanel ? "hidden md:flex" : "flex")
         }
       >
         <Outlet />
         {/* Resize Handle */}
-        <div className="resize-handle z-[60]" onMouseDown={handleMouseDown} />
+        {!isAssistantRoute && (
+          <div className="resize-handle z-[60]" onMouseDown={handleMouseDown} />
+        )}
       </div>
 
       {/* Center Panel */}
-      <div
-        className={
-          "flex-col min-w-0 relative overflow-hidden col-span-full md:col-span-1" +
-          (isStatsRoute
-            ? " flex bg-muted"
-            : activeConvId
-              ? " flex bg-chat"
-              : " hidden md:flex bg-muted")
-        }
-        onDragEnter={() => setIsHoveringFiles(true)}
-        onDrop={() => setIsHoveringFiles(false)}
-      >
-        {isStatsRoute ? (
-          <div className="overflow-y-auto h-full">
-            <StatsCenter />
-          </div>
-        ) : activeConvId ? (
-          <>
-            {isHoveringFiles && <FilePicker setHovering={setIsHoveringFiles} />}
-            <FilePreviewer />
-            <ChatHeader />
-            <Chat />
-            <ChatFooter />
-          </>
-        ) : (
-          <div className="flex gap-[32px] items-center justify-center h-full">
-            {!activeOrgId && (
-              <ActionCard
-                icon={<Building2 className="w-[24px] h-[24px]" />}
-                title={t("Crear organización")}
-                to="/settings/organization/new"
-              />
-            )}
-            {activeOrgId && (
-              <>
-                {!hasAiAgents && (
+      {!isAssistantRoute && (
+        <div
+          className={
+            "flex-col min-w-0 relative overflow-hidden col-span-full md:col-span-1" +
+            (isStatsRoute
+              ? " flex bg-muted"
+              : activeConvId
+                ? " flex bg-chat"
+                : " hidden md:flex bg-muted")
+          }
+          onDragEnter={() => setIsHoveringFiles(true)}
+          onDrop={() => setIsHoveringFiles(false)}
+        >
+          {isStatsRoute ? (
+            <div className="overflow-y-auto h-full">
+              <StatsCenter />
+            </div>
+          ) : activeConvId ? (
+            <>
+              {isHoveringFiles && (
+                <FilePicker setHovering={setIsHoveringFiles} />
+              )}
+              <FilePreviewer />
+              <ChatHeader />
+              <Chat />
+              <ChatFooter />
+            </>
+          ) : (
+            <div className="flex gap-[32px] items-center justify-center h-full">
+              {!activeOrgId && (
+                <ActionCard
+                  icon={<Building2 className="w-[24px] h-[24px]" />}
+                  title={t("Crear organización")}
+                  to="/settings/organization/new"
+                />
+              )}
+              {activeOrgId && (
+                <>
                   <ActionCard
                     icon={<Bot className="w-[24px] h-[24px]" />}
-                    title={t("Crear agente")}
-                    to="/agents/new"
+                    title={t("Consultar conversaciones")}
+                    to="/assistant"
                   />
-                )}
-                {hasAiAgents && (
                   <ActionCard
-                    icon={<MessageSquarePlus className="w-[24px] h-[24px]" />}
-                    title={t("Iniciar conversación")}
-                    to="/conversations/new"
+                    icon={<Settings className="w-[24px] h-[24px]" />}
+                    title={t("Configurar WhatsApp")}
+                    to="/integrations/whatsapp/new"
                   />
-                )}
-                <ActionCard
-                  icon={<Settings className="w-[24px] h-[24px]" />}
-                  title={t("Configurar WhatsApp")}
-                  to="/integrations/whatsapp/new"
-                />
-              </>
-            )}
-          </div>
-        )}
-      </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
