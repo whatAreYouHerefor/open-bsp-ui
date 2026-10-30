@@ -63,11 +63,15 @@ export default function Menu() {
           <MessageSquareText className="w-[24px] h-[24px] stroke-[2]" />
         </LinkButton>
 
-        {/* Agents button */}
+        {/* Internal workspace assistant */}
         <LinkButton
-          to="/agents"
-          title={t("Agentes")}
-          isActive={pathname.startsWith("/agents")}
+          to="/assistant"
+          title={
+            currentLanguage === "es"
+              ? "Consulta tu espacio"
+              : "Ask your workspace"
+          }
+          isActive={pathname.startsWith("/assistant")}
           className="mt-[10px]"
         >
           <Bot className="w-[24px] h-[24px] stroke-[2]" />
