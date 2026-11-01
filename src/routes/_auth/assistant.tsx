@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUp,
@@ -10,6 +10,7 @@ import {
   Copy,
   UserRound,
   X,
+  Smartphone,
 } from "lucide-react";
 import useBoundStore from "@/stores/useBoundStore";
 import { invokeFunction, supabase } from "@/supabase/client";
@@ -293,7 +294,17 @@ function AssistantChat({ orgId, es }: { orgId: string | null; es: boolean }) {
               {es ? "Asistente de tu espacio" : "Workspace assistant"}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {orgId && (
+              <Link
+                to="/integrations/whatsapp/new"
+                hash=""
+                className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-muted"
+              >
+                <Smartphone size={17} />
+                {es ? "Conectar WhatsApp" : "Connect WhatsApp"}
+              </Link>
+            )}
             <button
               type="button"
               className="rounded-xl p-2 xl:hidden"
