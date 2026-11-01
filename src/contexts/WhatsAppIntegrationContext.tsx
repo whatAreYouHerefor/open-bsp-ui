@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useCallback, useEffect } from "react";
+import { createContext, type ReactNode, useCallback, useEffect, useRef } from "react";
 import {
   useWhatsAppSignup,
   useWhatsAppSignupEvent,
@@ -84,6 +84,12 @@ export function WhatsAppIntegrationProvider({
 }: {
   children: ReactNode;
 }) {
+  const waSessionInfoRef = useRef<WASessionInfo | undefined>(undefined);
+  const sessionInfoWaitersRef = useRef<
+    Array<(info: WASessionInfo | undefined) => void>
+  >([]);
+  const signupCancelledRef = useRef(false);
+
   useEffect(() => {
     let sessionInfoListener: ((event: MessageEvent) => void) | null = null;
 
@@ -134,6 +140,10 @@ export function WhatsAppIntegrationProvider({
           // AbandonedFlowData
           console.log("User abandoned flow at step:", data.data.current_step);
         }
+        signupCancelledRef.current = true;
+        for (const resolve of sessionInfoWaitersRef.current.splice(0)) {
+          resolve(undefined);
+        }
         window.__waSignupReport?.(data.event, data.data);
         return;
       }
@@ -153,13 +163,19 @@ export function WhatsAppIntegrationProvider({
         return;
       }
 
-      // No type assertion needed - TypeScript knows data.data is SuccessfulFlowData
-      window.__waSessionInfo = {
+      // Store the event even if it arrives just after FB.login's callback.
+      const sessionInfo: WASessionInfo = {
         phone_number_id: data.data.phone_number_id,
         waba_id: data.data.waba_id,
         business_id: data.data.business_id,
-        flow_type: flow_type,
+        flow_type,
       };
+      waSessionInfoRef.current = sessionInfo;
+      window.__waSessionInfo = sessionInfo;
+      signupCancelledRef.current = false;
+      for (const resolve of sessionInfoWaitersRef.current.splice(0)) {
+        resolve(sessionInfo);
+      }
     };
 
     window.addEventListener("message", sessionInfoListener);
@@ -204,7 +220,9 @@ export function WhatsAppIntegrationProvider({
         reportSignupEvent({ event, data });
 
       // Do not let a previous attempt's account IDs leak into a new attempt.
+      waSessionInfoRef.current = undefined;
       window.__waSessionInfo = undefined;
+      signupCancelledRef.current = false;
 
       // Launch Facebook login
       window.FB?.login(
@@ -220,57 +238,84 @@ export function WhatsAppIntegrationProvider({
 
             setLoading(true);
 
-            // Retrieve session info captured from message events
-            const sessionInfo: WASessionInfo = window.__waSessionInfo ?? {};
+            // Meta returns the OAuth code and the Embedded Signup session data
+            // through separate callbacks. Wait briefly for the session event
+            // instead of treating a callback-order race as a failed config.
+            const waitForSessionInfo = () =>
+              new Promise<WASessionInfo | undefined>((resolve) => {
+                const current = waSessionInfoRef.current;
+                if (current?.waba_id) {
+                  resolve(current);
+                  return;
+                }
+                if (signupCancelledRef.current) {
+                  resolve(undefined);
+                  return;
+                }
 
-            // Facebook authorization can succeed even when the selected login
-            // configuration did not run WhatsApp Embedded Signup. In that
-            // case there is no WABA to save, and the API request can only fail.
-            if (!sessionInfo.waba_id) {
-              const message =
-                "Meta authorized the business assets, but did not return a WhatsApp Business Account (WABA). No WhatsApp number was connected. Check that this Meta configuration launches WhatsApp Embedded Signup.";
-              window.__waSignupReport?.("AUTH_ONLY_NO_WA_SESSION", {
-                has_phone_number_id: false,
-              });
-              setLoading(false);
-              onError?.(message);
-              return;
-            }
-
-            // Construct payload according to SignupPayload type
-            const payload: SignupPayload = {
-              code,
-              agent_id: options?.agent_id,
-              application_id: import.meta.env.VITE_META_APP_ID,
-              phone_number_id: sessionInfo.phone_number_id,
-              waba_id: sessionInfo.waba_id,
-              business_id: sessionInfo.business_id,
-              flow_type: sessionInfo.flow_type,
-              callback_url: options?.callback_url || undefined,
-              verify_token: options?.verify_token || undefined,
-            };
-
-            console.info("Submitting WhatsApp signup", {
-              has_waba_id: !!payload.waba_id,
-              has_phone_number_id: !!payload.phone_number_id,
-              flow_type: payload.flow_type,
-            });
-
-            signup(payload)
-              .then((address) => {
-                // A WABA-only finish may not include the phone ID in Meta's
-                // event; the backend resolves it and returns the saved row.
-                onSuccess(address.address);
-              })
-              .catch((error: Error) => {
-                console.error("Signup failed:", error);
-                onError?.(
-                  "Meta completed the authorization, but the BSP could not save the WhatsApp account. Check the signup event and backend result before trying again.",
+                let timeoutId: number;
+                const waiter = (info: WASessionInfo | undefined) => {
+                  window.clearTimeout(timeoutId);
+                  sessionInfoWaitersRef.current =
+                    sessionInfoWaitersRef.current.filter(
+                      (pending) => pending !== waiter,
+                    );
+                  resolve(info);
+                };
+                timeoutId = window.setTimeout(
+                  () => waiter(undefined),
+                  15_000,
                 );
-              })
-              .finally(() => {
-                setLoading(false);
+                sessionInfoWaitersRef.current.push(waiter);
               });
+
+            void waitForSessionInfo().then((sessionInfo) => {
+              // Facebook authorization can succeed even when the selected
+              // configuration did not run WhatsApp Embedded Signup, or when
+              // Meta did not emit a finish event.
+              if (!sessionInfo?.waba_id) {
+                const message =
+                  "Meta authorized the business assets, but no WhatsApp Embedded Signup session data arrived. Check that the selected Facebook Login for Business configuration uses the WhatsApp Embedded Signup flow.";
+                window.__waSignupReport?.("AUTH_ONLY_NO_WA_SESSION", {
+                  has_phone_number_id: false,
+                });
+                setLoading(false);
+                onError?.(message);
+                return;
+              }
+
+              const payload: SignupPayload = {
+                code,
+                agent_id: options?.agent_id,
+                application_id: import.meta.env.VITE_META_APP_ID,
+                phone_number_id: sessionInfo.phone_number_id,
+                waba_id: sessionInfo.waba_id,
+                business_id: sessionInfo.business_id,
+                flow_type: sessionInfo.flow_type,
+                callback_url: options?.callback_url || undefined,
+                verify_token: options?.verify_token || undefined,
+              };
+
+              console.info("Submitting WhatsApp signup", {
+                has_waba_id: !!payload.waba_id,
+                has_phone_number_id: !!payload.phone_number_id,
+                flow_type: payload.flow_type,
+              });
+
+              signup(payload)
+                .then((address) => {
+                  onSuccess(address.address);
+                })
+                .catch((error: Error) => {
+                  console.error("Signup failed:", error);
+                  onError?.(
+                    "Meta completed the authorization, but the BSP could not save the WhatsApp account. Check the signup event and backend result before trying again.",
+                  );
+                })
+                .finally(() => {
+                  setLoading(false);
+                });
+            });
           } else {
             console.log("User cancelled login or did not fully authorize.");
           }
