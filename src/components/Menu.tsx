@@ -12,6 +12,7 @@ import {
   Languages,
   Plus,
   NotebookTabs,
+  Smartphone,
 } from "lucide-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { LinkButton } from "./LinkButton";
@@ -75,6 +76,23 @@ export default function Menu() {
           className="mt-[10px]"
         >
           <Bot className="w-[24px] h-[24px] stroke-[2]" />
+        </LinkButton>
+
+        {/* Keep number onboarding reachable from the full-width assistant too. */}
+        <LinkButton
+          to="/integrations/whatsapp"
+          title={
+            currentLanguage === "es"
+              ? "Números de WhatsApp"
+              : "WhatsApp numbers"
+          }
+          isActive={
+            pathname.startsWith("/integrations/whatsapp/") ||
+            pathname === "/integrations/whatsapp"
+          }
+          className="mt-[10px]"
+        >
+          <Smartphone className="w-[24px] h-[24px] stroke-[2]" />
         </LinkButton>
 
         {/* Contacts button */}
