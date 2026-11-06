@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import "dayjs/locale/pt";
@@ -72,6 +72,24 @@ export default function Chat() {
   const scroller = useRef<HTMLDivElement>(null);
 
   const { translate: t, currentLanguage } = useTranslation();
+
+  const viewKey = `cmx-hidden-messages:${activeAgentId}:${activeConvId}`;
+  const [hiddenByKey, setHiddenByKey] = useState<Record<string, string[]>>({});
+  const hidden = hiddenByKey[viewKey] ?? (() => {
+    try { return JSON.parse(localStorage.getItem(viewKey) || "[]") as string[]; }
+    catch { return []; }
+  })();
+  const saveHidden = (ids: string[]) => {
+    try {
+      localStorage.setItem(viewKey, JSON.stringify(ids));
+      setHiddenByKey((old) => ({ ...old, [viewKey]: ids }));
+    } catch { window.alert(currentLanguage === "es" ? "No se pudo guardar el cambio." : "Could not save this change."); }
+  };
+  const deleteFromView = (id: string) => {
+    if (window.confirm(currentLanguage === "es"
+      ? "¿Eliminar este mensaje de tu vista en este navegador? No se elimina de WhatsApp ni de los registros del equipo."
+      : "Delete this message from your view in this browser? It stays in WhatsApp and the team records.")) saveHidden([...hidden, id]);
+  };
 
   function formatDate(timestamp: string): string {
     const dayjsTs = dayjs(timestamp).locale(currentLanguage);
@@ -271,6 +289,7 @@ export default function Chat() {
   const envelopesAndSeparators = insertDateSeparators(
     messages
       .filter((m) => {
+        if (hidden.includes(m.id)) return false;
         if (isAdmin) return true;
 
         // Hide internal messages for non-admin users
@@ -296,12 +315,18 @@ export default function Chat() {
         ref={scroller}
         className="grow pb-[8px] overflow-y-auto [scrollbar-gutter:stable]"
       >
-        <div className="min-h-[12px]" />
+        <div className="flex justify-end gap-3 p-2 text-xs">
+          <button className="text-muted-foreground underline" onClick={() => {
+            if (window.confirm(currentLanguage === "es" ? "¿Limpiar tu vista en este navegador? El historial se conserva y puedes restaurarlo." : "Clear your view in this browser? History is kept and can be restored.")) saveHidden([...new Set([...hidden, ...messages.map(m => m.id)])]);
+          }}>{currentLanguage === "es" ? "Limpiar mi vista" : "Clear my view"}</button>
+          {hidden.length > 0 && <button className="text-primary underline" onClick={() => saveHidden([])}>{currentLanguage === "es" ? "Restaurar mensajes" : "Restore messages"}</button>}
+        </div>
         <div className="flex flex-col">
           {envelopesAndSeparators.map((envOrSep, index) =>
             "message" in envOrSep ? (
+              <div key={envOrSep.message.id} className="group relative">
+              <button className="absolute right-2 top-0 z-20 rounded bg-background border border-border px-2 py-1 text-xs text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 max-md:opacity-100" onClick={() => deleteFromView(envOrSep.message.id)}>{currentLanguage === "es" ? "Eliminar para mí" : "Delete for me"}</button>
               <Message
-                key={envOrSep.message.id}
                 message={envOrSep.message}
                 first={envOrSep.first}
                 last={envOrSep.last}
@@ -310,6 +335,7 @@ export default function Chat() {
                 multiParty={multiParty}
                 avatar={getAgentAvatar(envOrSep.message)}
               />
+              </div>
             ) : (
               <Separator key={index} text={envOrSep.text} />
             ),
